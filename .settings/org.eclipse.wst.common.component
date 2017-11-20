@@ -16,7 +16,7 @@
         <dependent-module deploy-path="/" handle="module:/overlay/slf/?includes=**/**&amp;excludes=META-INF/MANIFEST.MF">
             <dependency-type>consumes</dependency-type>
         </dependent-module>
-        <property name="context-root" value="ibis4example"/>
-        <property name="java-output-path" value="/ibis4example/target/classes"/>
+        <property name="context-root" value="ibis4titann"/>
+        <property name="java-output-path" value="/ibis4titann/target/classes"/>
     </wb-module>
 </project-modules>
