@@ -1,12 +1,15 @@
 <!DOCTYPE configuration [
-	<!ENTITY HelloWorld SYSTEM "ConfigurationHelloWorld.xml">
-	<!ENTITY HelloWorlds SYSTEM "ConfigurationHelloWorlds.xml">
+	<!ENTITY BS_FindDocuments_4 SYSTEM "./ConfigurationBS_FindDocuments_4.xml">
+	<!ENTITY BS_GetDocumentsAndAttributes_4 SYSTEM "./ConfigurationBS_GetDocumentsAndAttributes_4.xml">	
+	<!ENTITY BS_UpdateDocumentAttributes_1 SYSTEM "./ConfigurationBS_UpdateDocumentAttributes_1.xml">
+	<!ENTITY BS_ArchiveDocuments SYSTEM "./ConfigurationBS_ArchiveDocuments.xml">
 ]>
 <configuration name="Ibis4titann">
 	<jmsRealms>
 		<jmsRealm realmName="jdbc" datasourceName="jdbc/${instance.name.lc}"/>
-		<!-- jmsRealm realmName="qcf" queueConnectionFactoryName="jms/qcf"/ -->
 	</jmsRealms>
-	&HelloWorld;
-	&HelloWorlds;
+	&BS_FindDocuments_4;
+	&BS_GetDocumentsAndAttributes_4;
+	&BS_UpdateDocumentAttributes_1;
+	&BS_ArchiveDocuments;
 </configuration>

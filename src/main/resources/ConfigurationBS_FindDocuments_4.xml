@@ -1,0 +1,313 @@
+<module>
+	<adapter name="BS_FindDocuments_4"
+		active="${active.BS_FindDocuments_4}" 
+		description="Orchestrates over EA.NET and CMIS Archive">
+
+		<receiver name="BS_FindDocumentsReceiver_4"
+			className="nl.nn.adapterframework.receivers.GenericReceiver"
+			numThreads="${numThreads.FindDocuments_4}">
+			<listener name="FindDocumentsListener"
+				className="nl.nn.adapterframework.extensions.esb.EsbJmsListener"
+				destinationName="jms/BS_FindDocumentsRequest_4" 
+				jmsRealm="qcf_tibco_esb_rr"
+				messageProtocol="RR"/>
+		</receiver>
+		
+		<pipeline firstPipe="Switch ArchiveType">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+
+			<inputValidator className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/2/FindDocuments/4 BS_FindDocuments_4/xsd/Archiving_Document_Document_FindDocuments.xsd"
+				soapBody="FindDocuments_Request"
+				reasonSessionKey="errorReason">
+				<forward name="failure" path="InvalidXml"/>
+				<forward name="parserError" path="NotWellFormed"/>
+			</inputValidator>
+			
+			<inputWrapper 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				direction="unwrap"
+				removeOutputNamespaces="true"
+				storeResultInSessionKey="Payload">
+			</inputWrapper>
+			
+			<outputValidator 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/2/FindDocuments/4 BS_FindDocuments_4/xsd/Archiving_Document_Document_FindDocuments.xsd"
+				reasonSessionKey="errorReason"
+				soapBody="FindDocuments_Response">
+				<forward name="failure" path="InvalidXml"/>
+				<forward name="parserError" path="NotWellFormed"/>
+			</outputValidator>
+			
+			<outputWrapper 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				addOutputNamespace="true">
+				<param name="destination" value="${BS_FindDocuments_4.destination}" />
+				<param name="errorCode" sessionKey="errorCode"/>
+				<param name="errorReason" sessionKey="errorReason"/>
+				<param name="errorDetailCode" sessionKey="errorDetailCode"/>
+				<param name="errorDetailText" sessionKey="errorDetailText"/>
+			</outputWrapper>
+			
+			<pipe name="Switch ArchiveType"
+				className="nl.nn.adapterframework.pipes.XmlSwitch"
+				xpathExpression="string-length(FindDocuments_Request/ArchiveType)>0">
+				<forward name="true" path="Transform EA Request" />
+				<forward name="false" path="Switch Single Or Parallel Call" />
+			</pipe>			
+			
+			<pipe name="Switch Single Or Parallel Call"
+				className="nl.nn.adapterframework.pipes.XmlSwitch"
+				xpathExpression="count(FindDocuments_Request/SearchAttributes/AuthorizedTo)>1">
+				<forward name="true" path="Call find services" />
+				<forward name="false" path="Call find service" />
+			</pipe>			
+<!-- Single call -->
+			<pipe name="Call find service"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.senders.IbisLocalSender"
+					javaListener="Sub_FindDocuments_4_Listener">
+				</sender>
+				<forward name="success" path="Transform Response" />
+				<forward name="exception" path="throwException" />
+			</pipe>
+			<pipe name="Transform Response"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_FindDocuments_4/xsl/ResponseFindDocuments.xsl"
+				skipEmptyTags="true">
+				<param name="PageSize" sessionKey="PageSize"/>
+				<param name="PageNum" sessionKey="PageNum"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+
+<!-- Parallel sender -->
+			<pipe 
+				name="Call find services"
+				className="nl.nn.adapterframework.pipes.ForEachChildElementPipe"
+				elementXPathExpression="FindDocuments_Request/SearchAttributes/AuthorizedTo"
+				xslt2="true"
+				removeXmlDeclarationInResults="true" 
+				parallel="true"
+				>
+				<sender className="nl.nn.adapterframework.senders.IbisLocalSender"
+					javaListener="Sub_FindDocuments_4_Multi_Listener">
+					<param name="Payload" sessionKey="Payload"/>
+				</sender>
+				<forward name="success" path="Group results" />
+				<forward name="exception" path="throwException" />
+			</pipe>
+			
+			<pipe name="Group results"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_FindDocuments_4/xsl/GroupResults.xsl">
+				<forward name="success" path="Transform Response Multi"/>
+			</pipe>
+			
+			<pipe
+				name="Transform Response Multi"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_FindDocuments_4/xsl/ResponseFindDocuments_Multi.xsl"
+				skipEmptyTags="true">
+				<param name="PageSize" sessionKey="PageSize"/>
+				<param name="PageNum" sessionKey="PageNum"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+		
+			<!-- EA.NET -->		
+			<pipe name="Transform EA Request"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_FindDocuments_4/xsl/RequestFindDocumentsEANET.xsl">
+				<param name="Payload" sessionKey="AuthorizedTo"/>
+				<forward name="success" path="Call EANET"/>
+			</pipe>
+			
+			<pipe name="Call EANET"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.esb.EsbJmsSender"
+					destinationName="jms/TS_EANET_FindDocumentsRequest_1"
+					messageProtocol="RR"
+					jmsRealm="qcf_tibco_esb_rr"/>
+				<inputValidator className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+					schemaLocation="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/FindDocuments/2 BS_FindDocuments_4/xsd/Archiving_Document_ArchivingDocumentInfoImage_1_FindDocuments_2.xsd"
+					soapBody="FindDocuments_1_Request"
+					reasonSessionKey="errorReason">
+					<forward name="failure" path="InvalidXml"/>
+					<forward name="parserError" path="NotWellFormed"/>
+				</inputValidator>
+	
+				<inputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					addOutputNamespace="true">
+					<param name="destination" value="${EANET.FindDocuments.destination}" />
+					<param name="errorCode" sessionKey="errorCode"/>
+					<param name="errorReason" sessionKey="errorReason"/>
+					<param name="errorDetailCode" sessionKey="errorDetailCode"/>
+					<param name="errorDetailText" sessionKey="errorDetailText"/> 
+				</inputWrapper>
+				
+	
+				<outputValidator 
+					className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+					schemaLocation="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/FindDocuments/2 BS_FindDocuments_4/xsd/Archiving_Document_ArchivingDocumentInfoImage_1_FindDocuments_2.xsd"
+					reasonSessionKey="errorReason"
+					soapBody="FindDocuments_1_Response">
+					<forward name="failure" path="InvalidXml"/>
+					<forward name="parserError" path="NotWellFormed"/>
+				</outputValidator>
+	
+				<outputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					direction="unwrap" 
+					removeOutputNamespaces="true">
+					<param name="destination" value="${EANET.FindDocuments.destination}" />
+				</outputWrapper>
+				<forward name="success" path="Transform EANET Response"/>
+			</pipe>
+			
+			<pipe
+				name="Transform EANET Response"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_FindDocuments_4/xsl/ResponseFindDocumentsEANET.xsl">
+				<forward name="success" path="READY"/>
+			</pipe>
+		
+		
+			<!-- error handling -->
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<pipe name="InvalidXml"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;FindDocuments_Response/&gt;">
+				<param name="errorCode" value="INVALID_XML"/>
+				<param name="errorDetailCode" sessionKey="errorReason" />
+				<param name="errorDetailText" sessionKey="xmlFailureReason" />
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<pipe name="NotWellFormed"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;FindDocuments_Response/&gt;">
+				<param name="errorCode" value="NOT_WELL_FORMED_XML"/>
+				<param name="errorDetailCode"/>
+				<param name="errorDetailText" sessionKey="xmlFailureReason" />
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			
+		</pipeline>
+	</adapter>
+	
+	<adapter name="Sub_FindDocuments_4"
+		active="${active.BS_FindDocuments_4}" 
+		description="Single or None call to infoimage">
+
+		<receiver name="Sub_FindDocuments_4_Receiver"
+			className="nl.nn.adapterframework.receivers.GenericReceiver">
+			<listener name="Sub_FindDocuments_4_Listener"
+				className="nl.nn.adapterframework.receivers.JavaListener"
+				serviceName="Sub_FindDocuments_4_Listener" 
+				/>
+		</receiver>
+		
+		<pipeline firstPipe="Build cmis query">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			
+			<pipe name="Build cmis query"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				styleSheetName="BS_FindDocuments_4/xsl/RequestFindDocuments.xsl"
+				xslt2="true">
+				<forward name="success" path="Call InfoImage"/>
+			</pipe>
+			
+			
+			<pipe name="Call InfoImage"
+				active="${Cmis}"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="find"
+					bindingType="webservices"
+					keepSession="${cmis.keepsession}">
+				<param name="authAlias" value="${AuthAliasFind4}" />
+				
+					
+				</sender>
+				<forward name="success" path="READY"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+			</pipe>
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+
+	<adapter name="Sub_FindDocuments_4_Multi"
+		active="${active.BS_FindDocuments_4}" 
+		description="Multi call to infoimage">
+
+		<receiver name="Sub_FindDocuments_4_Receiver"
+			className="nl.nn.adapterframework.receivers.GenericReceiver">
+			<listener name="Sub_FindDocuments_4_Multi_Listener"
+				className="nl.nn.adapterframework.receivers.JavaListener"
+				serviceName="Sub_FindDocuments_4_Multi_Listener" 
+				/>
+		</receiver>
+		
+		<pipeline firstPipe="Build cmis query">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			
+			<pipe name="Build cmis query"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				styleSheetName="BS_FindDocuments_4/xsl/RequestFindDocuments_Multi.xsl"
+				xslt2="true"
+				getInputFromSessionKey="Payload">
+				<param name="AuthorizedTo" sessionKey="originalMessage" xpathExpression="AuthorizedTo"/>
+				<forward name="success" path="Call InfoImage"/>
+			</pipe>
+			
+			
+			<pipe name="Call InfoImage"
+				active="${Cmis}"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="find"
+					bindingType="webservices"
+					keepSession="${cmis.keepsession}">
+				<param name="authAlias" value="${AuthAliasFind4}" />
+				
+					
+				</sender>
+	
+				<forward name="success" path="READY"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+			</pipe>
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+				
+</module>

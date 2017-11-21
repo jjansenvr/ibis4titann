@@ -1,0 +1,154 @@
+<module>
+	<adapter name="BS_UpdateDocumentAttributes_1"
+		active="${active.BS_UpdateDocumentAttributes_1}" 
+		description="Calls infoimage Archive to UpdateDocumentIndex">
+		<receiver name="UpdateDocumentAttributesReceiver"
+			className="nl.nn.adapterframework.receivers.GenericReceiver"
+			transactionAttribute="Required"
+			numThreads="${numThreads.BS_UpdateDocumentAttributes_1}">
+			<listener name="UpdateDocumentAttributesListener"
+				className="nl.nn.adapterframework.extensions.esb.EsbJmsListener"
+				destinationName="jms/BS_UpdateDocumentAttributesAction_1"
+				jmsRealm="qcf_tibco_esb_ff"
+				messageProtocol="FF"/>
+			<errorStorage
+				className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage"
+				jmsRealm="jdbc"
+				retention="${retentionPeriod}"
+				slotId="${instance.name}/UpdateDocumentAttributes"/>
+		</receiver>
+		
+		<pipeline firstPipe="Switch Id">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+
+			<inputValidator
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/Document/2/UpdateDocumentAttributes/1 BS_UpdateDocumentAttributes_1/xsd/Archiving_Document_Document_UpdateDocumentAttributes_1.xsd"
+				soapBody="UpdateDocumentAttributes_1_Action"
+				throwException="true"/>
+
+			<inputWrapper
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				direction="unwrap" 
+				removeOutputNamespaces="true"
+				storeResultInSessionKey="originalMessageUnwrapped"
+				/>
+			
+			<pipe name="Switch Id"
+				className="nl.nn.adapterframework.pipes.XmlSwitch"
+				serviceSelectionStylesheetFilename="BS_UpdateDocumentAttributes_1\xsl\SwitchPath.xsl">
+				<forward name="ID" path="Transform the request"/>
+				<forward name="DOCUMENTID" path="Prepare request findbyDocumentID"/>
+			</pipe>
+			
+			<pipe name="Prepare request findbyDocumentID"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				styleSheetName="BS_UpdateDocumentAttributes_1/xsl/Transform_findByDocumentID.xsl"
+				xslt2="true">
+				<forward name="success" path="Call InfoImage Find"/>
+			</pipe>
+			
+			<pipe name="Call InfoImage Find"
+				active="${Cmis}"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}"
+					action="find"
+					bindingType="webservices"
+					keepSession="${cmis.keepsession}">
+					<param name="authAlias" value="${AuthAliasUpdate}" />
+				</sender>
+
+				<messageLog 
+					className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage" 
+					jmsRealm="jdbc" 
+					slotId="${instance.name}/InfoImage/GetOnDocumentIdforUpdate"/>
+				<forward name="success" path="Check Response for multiple results"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+			</pipe>
+		
+		
+			<pipe name="Check Response for multiple results"
+				className="nl.nn.adapterframework.pipes.XmlSwitch"
+				serviceSelectionStylesheetFilename="BS_UpdateDocumentAttributes_1/xsl/CheckResult.xsl">
+				<forward name="multiple results" path="Error:To many result documents"/>
+				<forward name="zero results" path="Error:No result documents"/>
+				<forward name="success" path="Put ID in SessionKey"/>
+			</pipe>
+			
+			<pipe name="Put ID in SessionKey"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xpathExpression="/cmis/rowset/row/property[@name='cmis:objectId']"
+				storeResultInSessionKey="objectId"
+				xslt2="true">
+				<forward name="success" path="Transform the request"/>
+			</pipe>
+			
+			<pipe name="Transform the request"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				getInputFromSessionKey="originalMessageUnwrapped"
+				storeResultInSessionKey="UpdateMessage"
+				styleSheetName="BS_UpdateDocumentAttributes_1/xsl/TransformRequest.xsl"
+				xslt2="true">
+				<param name="objectId" sessionKey="objectId" />
+				<forward name="success" path="Call cmis UpdateDocumentAttributes"/>
+			</pipe>
+			
+			
+			<pipe name="Call cmis UpdateDocumentAttributes"
+			active="${Cmis}"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="DocIDUpdated"
+				transactionAttribute="NotSupported">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="update"
+					bindingType="webservices"
+					keepSession="${cmis.keepsession}">
+				<param name="authAlias" value="${AuthAliasUpdate}"/>
+				</sender>
+
+				<messageLog 
+					className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage" 
+					jmsRealm="jdbc" 
+					slotId="${instance.name}/InfoImage/ArchiveDocument"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+				
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<pipe name="Error:To many result documents"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;UpdateDocumentAttributes_1_Response/&gt;">
+				<param name="errorCode" value="DATA_ERROR"/>
+				<param name="errorReason" value="Unexpected Result from Archive"/>
+				<param name="errorDetailCode" value="DOCID_NOT_UNIQUE"/>
+				<param name="errorDetailText" value="More than one result document for documentID"/>
+				<forward name="success" path="throwException" />
+			</pipe>
+			
+			<pipe name="Error:No result documents"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;UpdateDocumentAttributes_1_Response/&gt;">
+				<param name="errorCode" value="DATA_ERROR"/>
+				<param name="errorReason" value="Unexpected Result from Archive"/>
+				<param name="errorDetailCode" value="DOCID_NOT_AVAILABLE"/>
+				<param name="errorDetailText" value="No result for documentID"/>
+				<forward name="success" path="throwException" />
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+</module>

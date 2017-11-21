@@ -1,0 +1,312 @@
+<module>
+	<adapter name="BS_GetDocumentAndAttributes_4"
+		active="${active.BS_GetDocumentAndAttributes_4}" 
+		description="Orchestrates over EA.NET and CMIS Archive">
+
+		<receiver name="BS_GetDocumentAndAttributesReceiver_4"
+			className="nl.nn.adapterframework.receivers.GenericReceiver"
+			numThreads="${numThreads.GetDocumentAndAttributes}">
+			<listener name="GetDocumentAndAttributesListener"
+				className="nl.nn.adapterframework.extensions.esb.EsbJmsListener"
+				destinationName="jms/BS_GetDocumentAndAttributesRequest_4" 
+				jmsRealm="qcf_tibco_esb_rr_large"
+				messageProtocol="RR"/>
+		</receiver>
+		
+		<pipeline firstPipe="Switch ArchiveType">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+
+			<inputValidator className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/2/GetDocumentAndAttributes/4 BS_GetDocumentAndAttributes_4/xsd/Archiving_Document_GetDocumentAndAttributes_4.xsd"
+				soapBody="GetDocumentAndAttributes_Request"
+				reasonSessionKey="errorReason"
+				cmhVersion="2">
+				<forward name="failure" path="InvalidXml"/>
+				<forward name="parserError" path="NotWellFormed"/>
+			</inputValidator>			
+			<inputWrapper 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				direction="unwrap"
+				removeOutputNamespaces="true"
+				cmhVersion="2">
+				<param name="destination" value="${BS_GetDocumentsAndAttributes_4.destination}" />
+			</inputWrapper>
+			
+			<outputValidator 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/2/GetDocumentAndAttributes/4 BS_GetDocumentAndAttributes_4/xsd/Archiving_Document_GetDocumentAndAttributes_4.xsd"
+				reasonSessionKey="errorReason"
+				restoreMovedElements="true"
+				soapBody="GetDocumentAndAttributes_Response"
+				cmhVersion="2">
+				<forward name="failure" path="InvalidXml"/>
+				<forward name="parserError" path="NotWellFormed"/>
+			</outputValidator>
+			
+			<outputWrapper 
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				addOutputNamespace="true"
+				cmhVersion="2">
+				<param name="destination" value="${BS_GetDocumentsAndAttributes_4.destination}" />
+				<param name="errorCode" sessionKey="errorCode"/>
+				<param name="errorReason" sessionKey="errorReason"/>
+				<param name="errorDetailCode" sessionKey="errorDetailCode"/>
+				<param name="errorDetailText" sessionKey="errorDetailText"/>
+			</outputWrapper>
+			
+			<pipe name="Switch ArchiveType"
+				className="nl.nn.adapterframework.pipes.XmlSwitch"
+				xpathExpression="string-length(//ArchiveType)>0">
+				<forward name="true" path="Map EANET Request" />
+				<forward name="false" path="Get AuthorizedTo Value" />
+			</pipe>			
+			
+			<pipe name="Get AuthorizedTo Value" className="nl.nn.adapterframework.pipes.XsltPipe"
+				sessionKey="AuthorizedToRequest"
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/GetAuthorizedToValues.xsl"
+				xslt2="true">
+				<forward name="success" path="Determine flow"/>
+			</pipe>
+			
+			<pipe name="Determine flow" className="nl.nn.adapterframework.pipes.XmlSwitch"
+				serviceSelectionStylesheetFilename="BS_GetDocumentAndAttributes_4/xsl/SwitchPath.xsl">
+				<forward name="ID" path="Prepare request getbyID"/>
+				<forward name="DOCUMENTID" path="Prepare request findbyDocumentID"/>
+			</pipe>
+			<!-- On documentID (first step get the ID based on documentId) -->
+			<pipe name="Prepare request findbyDocumentID" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/Transform_findByDocumentID.xsl" 
+				xslt2="true">
+				<forward name="success" path="Call InfoImage Find"/>
+			</pipe>
+			<pipe name="Call InfoImage Find" 
+				active="${Cmis}" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender" 
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="find" 
+					bindingType="webservices" 
+					keepSession="${cmis.keepsession.getbyid}">
+					<param name="authAlias" value="${AuthAliasGet4}"/>
+					<!--<param name="userName" value="cmisgetstr01" />-->
+				</sender>
+				<forward name="success" path="Check Response for multiple results"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+			</pipe>
+			<pipe name="Check Response for multiple results" 
+				className="nl.nn.adapterframework.pipes.XmlSwitch" 
+				serviceSelectionStylesheetFilename="BS_GetDocumentAndAttributes_4/xsl/CheckResult.xsl">
+				<forward name="multiple results" path="Transform functional Error Response"/>
+				<forward name="zero results" path="Transform functional Error Response"/>
+				<forward name="success" path="Put ID in Pipeline"/>
+			</pipe>
+			
+			<pipe name="Transform functional Error Response" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/TransformErrorResponse.xsl" 
+				xslt2="true" 
+				skipEmptyTags="true">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<pipe name="Put ID in Pipeline" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				xpathExpression="/cmis/rowset/row/property[@name='cmis:objectId']" 
+				xslt2="true">
+				<forward name="success" path="Call InfoImage"/>
+			</pipe>
+			<!-- Get By ID -->
+			<pipe name="Prepare request getbyID" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				xpathExpression="GetDocumentAndAttributes_Request/ID" 
+				xslt2="true">
+				<forward name="success" path="Call InfoImage"/>
+			</pipe>
+			<!-- start stub  -->
+			<pipe name="Call InfoImage"
+				active="${Stub}"
+				className="nl.nn.adapterframework.pipes.EchoPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			<!-- end stub  -->
+			<pipe name="Call InfoImage" 
+				active="${Cmis}" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="CMIS Output">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender" 
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="get"
+					bindingType="webservices"
+					getProperties="true" 
+					fileContentSessionKey="ref_filecontent" 
+					keepSession="${cmis.keepsession}">
+					<param name="authAlias" value="${AuthAliasGet4}"/>
+					<!-- <param name="password" value="cmisgetstr01" />-->
+				</sender>
+				<forward name="success" path="Check Authorized Switch"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="Error:getContentbyID"/>
+			</pipe>
+			
+			<pipe name="Check Authorized Switch" 
+				className="nl.nn.adapterframework.pipes.XmlSwitch" 
+				serviceSelectionStylesheetFilename="BS_GetDocumentAndAttributes_4/xsl/CheckAuthorized.xsl" 
+				xslt2="true">
+				<param name="AuthorizedToRequest" sessionKey="AuthorizedToRequest" type="domdoc"/>
+				<forward name="User_Authorized" path="Transform Response"/>
+				<forward name="Authorized_Empty_Request" path="Transform Response"/>
+				<forward name="Authorized_Empty_Archive" path="Transform Response"/>
+				<forward name="User_Not_Authorized" path="Error:userNotAuthorized"/>
+			</pipe>
+
+			<pipe name="Transform Response" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/TransformResponse.xsl" 
+				xslt2="true"
+				getInputFromSessionKey="CMIS Output" 
+				skipEmptyTags="true">
+				<forward name="success" path="READY"/>
+			</pipe>
+<!-- EA NET -->	
+
+			<pipe name="Map EANET Request" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/RequestGetDocumentAndAttributesEANET.xsl" 
+				xslt2="true"
+				skipEmptyTags="true">
+				<forward name="success" path="Call EANET"/>
+			</pipe>		
+			<pipe name="Call EANET"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
+				<sender className="nl.nn.adapterframework.extensions.esb.EsbJmsSender"
+					destinationName="jms/TS_EANET_GetDocumentAndAttributesRequest_1" 
+					jmsRealm="qcf_tibco_esb_rr_large"
+					messageProtocol="RR"/>
+				<inputValidator className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+					schemaLocation="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/GetDocumentAndAttributes/2 BS_GetDocumentAndAttributes_4/xsd/Archiving_Document_ArchivingDocumentInfoImage_1_GetDocumentAndAttributes_2.xsd"
+					soapBody="GetDocumentAndAttributes_1_Request"
+					reasonSessionKey="errorReason">
+					<forward name="failure" path="InvalidXml"/>
+					<forward name="parserError" path="NotWellFormed"/>
+				</inputValidator>
+	
+				<inputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					addOutputNamespace="true">
+					<param name="destination" value="${EANET.GetDocumentAndAttributes.destination}" />
+					<param name="errorCode" sessionKey="errorCode"/>
+					<param name="errorReason" sessionKey="errorReason"/>
+					<param name="errorDetailCode" sessionKey="errorDetailCode"/>
+					<param name="errorDetailText" sessionKey="errorDetailText"/>
+				</inputWrapper>
+				
+	
+				<outputValidator 
+					className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator"
+					schemaLocation="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/GetDocumentAndAttributes/2 BS_GetDocumentAndAttributes_4/xsd/Archiving_Document_ArchivingDocumentInfoImage_1_GetDocumentAndAttributes_2.xsd"
+					reasonSessionKey="errorReason"
+					soapBody="GetDocumentAndAttributes_1_Response">
+					<forward name="failure" path="InvalidXml"/>
+					<forward name="parserError" path="NotWellFormed"/>
+				</outputValidator>
+	
+				<outputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					direction="unwrap" 
+					removeOutputNamespaces="true">
+					<param name="destination" value="${EANET.GetDocumentAndAttributes.destination}" />
+				</outputWrapper>
+
+				<forward name="success" path="Transform EANET Response"/>
+			</pipe>
+			
+			<pipe
+				name="Transform EANET Response"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				skipEmptyTags="true"
+				styleSheetName="BS_GetDocumentAndAttributes_4/xsl/ResponseGetDocumentAndAttributesEANET.xsl">
+				<forward name="success" path="READY"/>
+			</pipe>
+
+			<!-- error handling -->
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<pipe name="InvalidXml"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="INVALID_XML"/>
+				<param name="errorDetailCode"/>
+				<param name="errorDetailText" sessionKey="xmlFailureReason"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+
+			<pipe name="NotWellFormed"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="NOT_WELL_FORMED_XML"/>
+				<param name="errorDetailCode"/>
+				<param name="errorDetailText" sessionKey="xmlFailureReason"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			<pipe name="Error:Timeout"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="TIME_OUT"/>
+				<param name="errorReason" value="Timeout on call to ibm cloud archive"/>
+				<param name="errorDetailCode"/>
+				<param name="errorDetailText"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			<pipe name="Error:To many result documents"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="DATA_ERROR"/>
+				<param name="errorReason" value="Unexpected Result from Archive"/>
+				<param name="errorDetailCode" value="DOCID_NOT_UNIQUE"/>
+				<param name="errorDetailText" value="More than one result document for documentID"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			<pipe name="Error:No result documents"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="DATA_ERROR"/>
+				<param name="errorReason" value="Unexpected Result from Archive"/>
+				<param name="errorDetailCode" value="DOCID_NOT_AVAILABLE"/>
+				<param name="errorDetailText" value="No result for documentID"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			<pipe name="Error:getContentbyID"
+				className="nl.nn.adapterframework.pipes.PutParametersInSession"
+				getInputFromFixedValue="&lt;GetDocumentAndAttributes_Response/&gt;">
+				<param name="errorCode" value="DATA_ERROR"/>
+				<param name="errorReason" value="Unexpected Result from Archive"/>
+				<param name="errorDetailCode" value="ERR6999"/>
+				<param name="errorDetailText" value="Unexpected Result from Archive"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			<pipe name="Error:userNotAuthorized" 
+				className="nl.nn.adapterframework.pipes.XsltPipe" 
+				styleSheetName="BS_Common/xsl/FunctionalErrorResponse.xsl" 
+				xslt2="true"
+				skipEmptyTags="true"
+				getInputFromFixedValue="&lt;dummy/&gt;">
+				<param name="rootTag" value="GetDocumentAndAttributes_Response"/>
+				<param name="errorCode" value="Data_ERROR"/>
+				<param name="errorReason" value="Document not Available"/>
+				<param name="errorDetailCode" value="ERR6999"/>
+				<param name="errorDetailText" value="Not Authorized"/>
+				<param name="operation"  value="GetDocumentsAndAttributes"/>
+				<param name="operationVersion"  value="3"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+		</pipeline>
+	</adapter>	
+</module>

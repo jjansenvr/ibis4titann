@@ -1,0 +1,136 @@
+<!--#################################### version history #######################################       -->
+		<!--Version   Editor      Comment                                                                                                                      -->
+		<!--v2.1        JJvR       initial version of infoImage get xsd							                                                      -->
+		<!--v1.2        ETH        - Element Contract_NrAccount moved to other location and now optional     -->
+		<!--                       - Element Annotation moved to other location, immediately before ID        -->
+		<!--v2.0        JJvR        - Changed response types, fileref(44) and documentTitle(512)                                                 -->
+
+		<!--#################################### version history #######################################       -->
+		<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/GetDocumentAndAttributes/4" xmlns:cmh="http://nn.nl/XSD/Generic/MessageHeader/2" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://nn.nl/XSD/Archiving/Document/ArchivingDocumentInfoImage/1/GetDocumentAndAttributes/4">
+			<!--# fix for local errors added schemalocation for messageheader #	-->	 
+	<xsd:import namespace="http://nn.nl/XSD/Generic/MessageHeader/2" schemaLocation="../../xsd/common/CommonMessageHeader_2.xsd"/>
+			<xsd:element name="GetDocumentAndAttributes_4_Request">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="ArchiveType">
+							<xsd:simpleType>
+								<xsd:restriction base="xsd:string">
+									<xsd:maxLength value="20"/>
+								</xsd:restriction>
+							</xsd:simpleType>
+						</xsd:element>
+						<xsd:choice>
+							<xsd:element name="ID">
+								<xsd:simpleType>
+									<xsd:restriction base="xsd:string">
+										<xsd:minLength value="1"/>
+										<xsd:maxLength value="40"/>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+							<xsd:element name="DocumentID">
+								<xsd:simpleType>
+									<xsd:restriction base="xsd:string">
+										<xsd:minLength value="1"/>
+										<xsd:maxLength value="40"/>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+						</xsd:choice>
+						<xsd:element name="RequestUserId">
+							<xsd:simpleType>
+								<xsd:restriction base="xsd:string">
+									<xsd:minLength value="1"/>
+									<xsd:maxLength value="20"/>
+								</xsd:restriction>
+							</xsd:simpleType>
+						</xsd:element>
+					</xsd:sequence>
+				</xsd:complexType>
+			</xsd:element>
+			<xsd:element name="GetDocumentAndAttributes_4_Response">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element minOccurs="0" name="File">
+							<xsd:complexType>
+								<xsd:sequence>
+									<xsd:element name="FileContent" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="FileName" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="FileSize" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="FileToolVersion" type="xsd:string"/>
+									<xsd:element name="MimeType" type="xsd:string"/>
+								</xsd:sequence>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element minOccurs="0" name="DocumentClass" type="xsd:string"/>
+						<xsd:element minOccurs="0" name="MetaData">
+							<xsd:complexType>
+								<xsd:sequence>
+									<xsd:element minOccurs="0" name="ArrivedAt" type="xsd:dateTime"/>
+									<xsd:element minOccurs="0" name="ArrivedBy" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="BirthDt" type="xsd:date"/>
+									<xsd:element minOccurs="0" name="ClaimNumber" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="ContentRetentionDate" type="xsd:date"/>
+									<xsd:element minOccurs="0" name="Contract_Nr" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Contract_NrAccount" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Contract_NrLoan" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Contract_NrPolicy" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Contract_NrQuotation" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="ConversionDate" type="xsd:dateTime"/>
+									<xsd:element minOccurs="0" name="ConversionOrigin" type="xsd:string"/>
+									<xsd:element name="CreatedAt" type="xsd:dateTime"/>
+									<xsd:element name="CreatedBy" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="DateContentLastAccessed" type="xsd:date"/>
+									<xsd:element minOccurs="0" name="DescriptionProductGroup" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="DocumentDetail" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="DocumentID" type="xsd:string"/>
+									<xsd:element name="DocumentRouting" type="xsd:string"/>
+									<xsd:element name="DocumentTitle" type="xsd:string"/>
+									<xsd:element name="DocumentType" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="ExternalEventTriggerDate" type="xsd:date"/>
+									<xsd:element minOccurs="0" name="IBAN" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="IDNumberFactory" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="IDNumberPersonal" type="xsd:string"/>
+									<xsd:element name="Label" type="xsd:string"/>
+									<xsd:element name="ModifiedAt" type="xsd:dateTime"/>
+									<xsd:element name="ModifiedBy" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Name_LastInsured" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Name_LastPolicyHolder" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Name_Org" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="PartnerGold" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="PartnerIntermediary" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="PartnerSilver" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="ReferenceDate" type="xsd:date"/>
+									<xsd:element minOccurs="0" name="RequestNumber" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="RetentionTrigger" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="Source" type="xsd:string"/>
+									<xsd:element minOccurs="0" name="SourceTransactionID" type="xsd:string"/>
+									<xsd:element name="Annotation" minOccurs="0" maxOccurs="unbounded">
+										<xsd:complexType>
+											<xsd:sequence>
+												<xsd:element name="AnnAuthor" minOccurs="0" type="xsd:string"/>
+												<xsd:element name="AnnCreated" type="xsd:dateTime" minOccurs="0"/>
+												<xsd:element name="AnnModifed" type="xsd:dateTime" minOccurs="0"/>
+												<xsd:element name="AnnScope" minOccurs="0">
+													<xsd:simpleType>
+														<xsd:restriction base="xsd:string">
+															<xsd:enumeration value="Document"/>
+															<xsd:enumeration value="Page"/>
+														</xsd:restriction>
+													</xsd:simpleType>
+												</xsd:element>
+												<xsd:element name="AnnPageNumber" type="xsd:integer" minOccurs="0"/>
+												<xsd:element name="AnnContent" type="xsd:string"/>
+											</xsd:sequence>
+										</xsd:complexType>
+									</xsd:element>
+									<xsd:element name="ID" type="xsd:string"/>
+									<xsd:any maxOccurs="unbounded" minOccurs="0" namespace="##any" processContents="skip"/>
+								</xsd:sequence>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element ref="cmh:Result"/>
+					</xsd:sequence>
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:schema>

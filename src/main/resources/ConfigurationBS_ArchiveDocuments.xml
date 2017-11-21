@@ -1,0 +1,241 @@
+<module>
+	<adapter name="BS_ArchiveDocuments" active="${active.BS_ArchiveDocuments}">
+		<receiver
+			name="BS_ArchiveDocuments"
+			className="nl.nn.adapterframework.receivers.GenericReceiver"
+			elementToMove="FileContent"
+			removeCompactMsgNamespaces="false"
+			transactionAttribute="Required"
+			numThreads="${numThreads.BS_ArchiveDocuments}">
+			<listener
+				className="nl.nn.adapterframework.extensions.esb.EsbJmsListener"
+				destinationName="jms/BS_ArchiveDocumentsAction_1" 
+				jmsRealm="qcf_tibco_esb_ff"
+				messageProtocol="FF"
+				/>
+			<errorStorage
+				className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage"
+				jmsRealm="jdbc"
+				retention="${retentionPeriod}"
+				slotId="${instance.name}/ArchiveDocuments"/>
+		</receiver>
+		
+		<pipeline firstPipe="Get SourceTransactionID">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			<inputWrapper
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+				direction="unwrap" 
+				removeOutputNamespaces="true"/>
+				
+			<inputValidator
+				className="nl.nn.adapterframework.extensions.esb.EsbSoapValidator" 
+				schemaLocation="http://nn.nl/XSD/Archiving/Document/Document/2/ArchiveDocuments/1 BS_ArchiveDocuments/xsd/Archiving_Document_Document_2_ArchiveDocuments_1.xsd"
+				soapBody="ArchiveDocuments_1_Action"
+				throwException="true"/>
+			
+			<pipe name="Get SourceTransactionID"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				xpathExpression="/ArchiveDocuments_1_Action/SourceTransactionID"
+				storeResultInSessionKey="sourceTransactionID"
+				preserveInput="true"
+				>
+				<forward name="success" path="Send each received document to DPDH"/>
+			</pipe>
+			
+			
+			<pipe name="Send each received document to DPDH"
+			  	 className="nl.nn.adapterframework.pipes.ForEachChildElementPipe" 
+			  	 elementXPathExpression="/ArchiveDocuments_1_Action/Document" 
+		  	  	 collectResults="false"
+		  	  	 preserveInput="true"> 
+				 <sender className="nl.nn.adapterframework.senders.IbisLocalSender" 
+						 javaListener="Process_DPDH"/>				
+				<param name="direction" value="R"/>
+				<param name="sourceTransactionID" sessionKey="sourceTransactionID"/>
+				 <forward name="success" path="Transform for looping"/>
+			</pipe>
+			
+			
+			<pipe name="Transform for looping"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_ArchiveDocuments/xsl/PrepareArchiveDocumentsforIteration.xsl"
+				restoreMovedElements="true"
+				skipEmptyTags="true">
+				<forward name="success" path="Iterate ArchiveDocuments"/>
+			</pipe>
+			
+			<pipe 
+				name="Iterate ArchiveDocuments"
+				className="nl.nn.adapterframework.pipes.ForEachChildElementPipe"
+				elementXPathExpression="/root/ArchiveDocument_1_Action"
+				xslt2="true" >
+				<sender className="nl.nn.adapterframework.senders.IbisLocalSender"
+					javaListener="TS_ArchiveDocument">
+				</sender>
+				<param name="sourceTransactionID" sessionKey="sourceTransactionID"/>
+				<forward name="success" path="READY" />
+				<forward name="exception" path="throwException" />
+			</pipe>
+			
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+	<adapter name="TS_ArchiveDocument" 
+		active="${active.BS_ArchiveDocuments}">
+		<receiver name="TS_ArchiveDocument_Receiver"
+			className="nl.nn.adapterframework.receivers.GenericReceiver"
+			transactionAttribute="Required"
+			elementToMove="FileContent">
+			<listener name="TS_ArchiveDocument"
+				className="nl.nn.adapterframework.receivers.JavaListener"
+				serviceName="TS_ArchiveDocument" 
+				/>
+		</receiver>
+		
+		<pipeline firstPipe="Transform the request">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+						
+			<pipe name="Transform the request"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				xslt2="true"
+				styleSheetName="BS_ArchiveDocuments/xsl/TransformRequest.xsl"
+				skipEmptyTags="true">
+				<param name="systemDate" pattern="{now,date,yyyy-MM-dd}"/>
+				<forward name="success" path="Call InfoImage"/>
+			</pipe>
+	<!-- start stub  -->
+			<pipe name="Call InfoImage" 
+				active="${Stub}"
+				className="nl.nn.adapterframework.pipes.EchoPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+<!-- end stub  -->
+			<pipe name="Call InfoImage"
+				active="${Cmis}"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="DocIDCreated"
+				transactionAttribute="NotSupported"
+				>
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${InfoImage.url}"
+					repository="${InfoImage.repository}" 
+					action="create"
+					bindingType="webservices"
+					fileContentSessionKey="ref_FileContent"
+					useRootFolder="false"
+					keepSession="${cmis.keepsession}">
+					<param name="authAlias" value="${AuthAliasArchive}" />
+				</sender>
+
+				<messageLog 
+					className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage" 
+					jmsRealm="jdbc" 
+					slotId="${instance.name}/InfoImage/ArchiveDocument"/>
+				<forward name="timeout" path="throwException"/>
+				<forward name="illegalResult" path="throwException"/>
+				
+				<forward name="success" path="Send document to DPDH"/>
+			</pipe>
+		
+			<pipe name="Send document to DPDH"
+			  	 className="nl.nn.adapterframework.pipes.ForEachChildElementPipe" 
+			  	 elementXPathExpression="/ArchiveDocument_1_Action/Document" 
+		  	  	 collectResults="false"
+		  	  	 getInputFromSessionKey="originalMessage"> 
+				 <sender className="nl.nn.adapterframework.senders.IbisLocalSender" 
+						 javaListener="Process_DPDH"/>				
+				<param name="direction" value="S"/>
+				<param name="sourceTransactionID" sessionKey="sourceTransactionID"/>
+				<param name="DocIDCreated" sessionKey="DocIDCreated"/>
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+			<!-- <pipe name="Transform the request to call DocumentProcessDataHandling"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				styleSheetName="BS_ArchiveDocuments/xsl/TransformRequestDPDH.xsl"
+				getInputFromFixedValue="&lt;dummy/&gt;">`
+				<param name="direction" sessionKey="S"/>
+				<param name="systemDate" pattern="{now,date,yyyy-MM-dd'T'HH:mm:ss}"/>
+				<param name="docID" sessionKey="DocIDCreated"/>
+				<param name="sourceTransactionID" sessionKey="sourceTransactionID"/>
+				<forward name="success" path="call DocumentProcesDataHandling"/>
+			</pipe>
+
+			<pipe name="call DocumentProcesDataHandling" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe" >
+				<sender className="nl.nn.adapterframework.extensions.esb.EsbJmsSender"
+					destinationName="jms/DocumentProcesDataHandlingAction" 
+					jmsRealm="qcf_tibco_esb_ff"
+					messageProtocol="FF"/>
+				<inputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					mode="i2t">
+				<param name="destination" value="${destination.DocumentProcesDataHandling}" />
+				</inputWrapper>
+				<messageLog className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage" 
+					jmsRealm="jdbc" 
+					slotId="${instance.name}/DPDH" />
+				<forward name="success" path="READY" />
+			</pipe>	 -->
+		
+			<pipe name="throwException"
+				className="nl.nn.adapterframework.pipes.ExceptionPipe">
+				<forward name="success" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+	
+	<adapter description="Process_DPDH"
+			 name="Process_DPDH">
+        	<receiver className="nl.nn.adapterframework.receivers.GenericReceiver" 
+        			  name="Process_DPDH">
+           			<listener className="nl.nn.adapterframework.receivers.JavaListener" 
+           			 		  name="Process_DPDH"/>
+        	</receiver>
+        	
+        	<pipeline firstPipe="Transform the request to call DocumentProcessDataHandling">
+        
+	        	<exits>
+					<exit path="READY" state="success"/>
+				</exits>
+			
+			<pipe name="Transform the request to call DocumentProcessDataHandling"
+				className="nl.nn.adapterframework.pipes.XsltPipe"
+				styleSheetName="/BS_ArchiveDocuments/xsl/TransformRequestDPDH.xsl"
+				>
+				<param name="systemDate" pattern="{now,date,yyyy-MM-dd'T'HH:mm:ss}"/>
+				<param name="sourceTransactionID" sessionKey="sourceTransactionID"/>
+				<param name="direction" sessionKey="direction"/>
+				<param name="docIDCreated" sessionKey="DocIDCreated"/>
+				<forward name="success" path="call DocumentProcesDataHandling"/>
+			</pipe>
+
+			<pipe name="call DocumentProcesDataHandling" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe" >
+				<sender className="nl.nn.adapterframework.extensions.esb.EsbJmsSender"
+					destinationName="jms/DocumentProcesDataHandlingAction" 
+					jmsRealm="qcf_tibco_esb_ff"
+					messageProtocol="FF"/>
+				<inputWrapper className="nl.nn.adapterframework.extensions.esb.EsbSoapWrapperPipe"
+					mode="i2t">
+				<param name="destination" value="${destination.DocumentProcesDataHandling}" />
+				</inputWrapper>
+				<messageLog className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage" 
+					jmsRealm="jdbc" 
+					slotId="${instance.name}/DPDH" />
+				<forward name="success" path="READY" />
+			</pipe>
+
+			</pipeline>
+    </adapter>
+</module>
