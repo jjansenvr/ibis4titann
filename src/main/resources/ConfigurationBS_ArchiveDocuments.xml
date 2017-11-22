@@ -196,7 +196,8 @@
 	</adapter>
 	
 	<adapter description="Process_DPDH"
-			 name="Process_DPDH">
+			 name="Process_DPDH" 
+			  active="${active.DPDH}">
         	<receiver className="nl.nn.adapterframework.receivers.GenericReceiver" 
         			  name="Process_DPDH">
            			<listener className="nl.nn.adapterframework.receivers.JavaListener" 

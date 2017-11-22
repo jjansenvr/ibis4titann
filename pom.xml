@@ -16,8 +16,9 @@
 		<iaf.version>7.0-B4-SNAPSHOT</iaf.version>
 		<timestamp>${maven.build.timestamp}</timestamp>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
+		<opencmis.version>1.1.0</opencmis.version>
 	</properties>
-
+	
 	<repositories>
 		<repository>
 			<id>ibis-mvn-repo</id>
@@ -63,6 +64,38 @@
 			<scope>runtime</scope>
 			<version>1.1</version>
 		</dependency>
+		<dependency>
+		<groupId>org.apache.chemistry.opencmis</groupId>
+		<artifactId>chemistry-opencmis-commons-api</artifactId>
+		<version>${opencmis.version}</version>
+	</dependency>
+	<dependency>
+		<groupId>org.apache.chemistry.opencmis</groupId>
+		<artifactId>chemistry-opencmis-commons-impl</artifactId>
+		<version>${opencmis.version}</version>
+		<exclusions>
+			<exclusion><!-- Exclude 1.0-2 as 1.0.1 is already included by xmlbeans. -->
+				<groupId>javax.xml.stream</groupId>
+				<artifactId>stax-api</artifactId>
+			</exclusion>
+		</exclusions>
+	</dependency>
+	<dependency>
+		<groupId>org.apache.chemistry.opencmis</groupId>
+		<artifactId>chemistry-opencmis-client-api</artifactId>
+		<version>${opencmis.version}</version>
+	</dependency>
+	<dependency>
+		<groupId>org.apache.chemistry.opencmis</groupId>
+		<artifactId>chemistry-opencmis-client-impl</artifactId>
+		<version>${opencmis.version}</version>
+	</dependency>
+	<dependency>
+		<groupId>org.apache.chemistry.opencmis</groupId>
+		<artifactId>chemistry-opencmis-client-bindings</artifactId>
+		<version>${opencmis.version}</version>
+	</dependency>
+		
 	</dependencies>
 
 	<build>
@@ -77,8 +110,8 @@
 					<filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
 					<archive>
 						<manifestEntries>
-							<Ibis-Project>${pom.name}</Ibis-Project>
-							<Ibis-Description>${pom.description}</Ibis-Description>
+							<Ibis-Project>${project.name}</Ibis-Project>
+							<Ibis-Description>${project.description}</Ibis-Description>
 							<IAF-Version>${iaf.version}</IAF-Version>
 							<Created-By>Apache Maven ${maven.version}</Created-By>
 							<Creation-Time>${timestamp}</Creation-Time>

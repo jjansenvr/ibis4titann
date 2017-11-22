@@ -13,7 +13,7 @@
 				messageProtocol="RR"/>
 		</receiver>
 		
-		<pipeline firstPipe="Switch ArchiveType">
+		<pipeline firstPipe="Call find service">
 			<exits>
 				<exit path="READY" state="success"/>
 			</exits>
@@ -52,7 +52,7 @@
 				<param name="errorDetailText" sessionKey="errorDetailText"/>
 			</outputWrapper>
 			
-			<pipe name="Switch ArchiveType"
+			<!-- <pipe name="Switch ArchiveType"
 				className="nl.nn.adapterframework.pipes.XmlSwitch"
 				xpathExpression="string-length(FindDocuments_Request/ArchiveType)>0">
 				<forward name="true" path="Transform EA Request" />
@@ -64,7 +64,7 @@
 				xpathExpression="count(FindDocuments_Request/SearchAttributes/AuthorizedTo)>1">
 				<forward name="true" path="Call find services" />
 				<forward name="false" path="Call find service" />
-			</pipe>			
+			</pipe>			 -->
 <!-- Single call -->
 			<pipe name="Call find service"
 				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe">
@@ -85,7 +85,7 @@
 			</pipe>
 
 <!-- Parallel sender -->
-			<pipe 
+<!-- 			<pipe 
 				name="Call find services"
 				className="nl.nn.adapterframework.pipes.ForEachChildElementPipe"
 				elementXPathExpression="FindDocuments_Request/SearchAttributes/AuthorizedTo"
@@ -120,7 +120,7 @@
 			</pipe>
 			
 		
-			<!-- EA.NET -->		
+			EA.NET		
 			<pipe name="Transform EA Request"
 				className="nl.nn.adapterframework.pipes.XsltPipe"
 				xslt2="true"
@@ -178,7 +178,7 @@
 				<forward name="success" path="READY"/>
 			</pipe>
 		
-		
+		 -->
 			<!-- error handling -->
 			<pipe name="throwException"
 				className="nl.nn.adapterframework.pipes.ExceptionPipe">
@@ -256,7 +256,7 @@
 			
 		</pipeline>
 	</adapter>
-
+<!-- 
 	<adapter name="Sub_FindDocuments_4_Multi"
 		active="${active.BS_FindDocuments_4}" 
 		description="Multi call to infoimage">
@@ -309,5 +309,5 @@
 			
 		</pipeline>
 	</adapter>
-				
+	 -->			
 </module>
