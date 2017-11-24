@@ -1,0 +1,70 @@
+<module>
+	<adapter name="TestGet">
+		<receiver name="GetDocument"
+			className="nl.nn.adapterframework.receivers.GenericReceiver">
+			<listener name="GetDocument"
+				className="nl.nn.adapterframework.receivers.JavaListener"/>
+		</receiver>
+		
+		<pipeline firstPipe="Call Archive">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			
+			<pipe name="Call Archive" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="CMIS Output">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${cmis.url}"
+					repository="${cmis.repository}" 
+					action="get"
+					bindingType="browser"
+					getProperties="true" 
+					fileContentSessionKey="ref_filecontent" 
+					keepSession="${cmis.keepsession}"
+					userName="jeroen"
+					password="Welkom01">
+					
+				</sender>
+				<forward name="success" path="READY"/>
+				<forward name="timeout" path="READY"/>
+				<forward name="illegalResult" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+		<adapter name="TestFind">
+		<receiver name="FindDocument"
+			className="nl.nn.adapterframework.receivers.GenericReceiver">
+			<listener name="FindDocument"
+				className="nl.nn.adapterframework.receivers.JavaListener"/>
+		</receiver>
+		
+		<pipeline firstPipe="Call Archive">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			
+			<pipe name="Call Archive" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="CMIS Output">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${cmis.url}"
+					repository="${cmis.repository}" 
+					action="find"
+					bindingType="browser"
+					getProperties="true" 
+					fileContentSessionKey="ref_filecontent" 
+					keepSession="${cmis.keepsession}"
+					userName="jeroen"
+					password="Welkom01">
+					
+				</sender>
+				<forward name="success" path="READY"/>
+				<forward name="timeout" path="READY"/>
+				<forward name="illegalResult" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>	
+</module>

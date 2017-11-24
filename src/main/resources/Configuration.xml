@@ -3,7 +3,7 @@
 	<!ENTITY BS_GetDocumentsAndAttributes_4 SYSTEM "./ConfigurationBS_GetDocumentsAndAttributes_4.xml">	
 	<!ENTITY BS_UpdateDocumentAttributes_1 SYSTEM "./ConfigurationBS_UpdateDocumentAttributes_1.xml">
 	<!ENTITY BS_ArchiveDocuments SYSTEM "./ConfigurationBS_ArchiveDocuments.xml">
-	<!ENTITY testCMIS SYSTEM "./Configurationtestcmis.xml">
+	<!ENTITY testCMIS SYSTEM "./ConfigurationTestCMIS.xml">
 ]>
 <configuration name="Ibis4titann">
 	<jmsRealms>
