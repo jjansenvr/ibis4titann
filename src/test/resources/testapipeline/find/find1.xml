@@ -1,0 +1,7 @@
+<query>
+<statement>select * from cmis:document</statement>
+<maxItems>10</maxItems>
+<skipCount>0</skipCount>
+<searchAllVersions>true</searchAllVersions>
+<includeAllowableActions>true</includeAllowableActions>
+</query>

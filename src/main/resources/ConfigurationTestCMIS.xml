@@ -67,4 +67,93 @@
 			
 		</pipeline>
 	</adapter>	
+		<adapter name="TestArchive">
+		<receiver name="ArchiveDocument"
+		elementToMove="FileContent"
+			className="nl.nn.adapterframework.receivers.GenericReceiver">
+			<listener name="ArchiveDocument"
+				className="nl.nn.adapterframework.receivers.JavaListener"/>
+		</receiver>
+		
+		<pipeline firstPipe="Call Archive">
+			<exits>
+				<exit path="READY" state="success"/>
+			</exits>
+			
+			<pipe name="Call Archive" 
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="CMIS Output">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${cmis.url}"
+					repository="${cmis.repository}" 
+					action="create"
+					bindingType="browser"
+					getProperties="true"
+					keepSession="${cmis.keepsession}"
+					userName="jeroen"
+					password="Welkom01"
+					fileContentSessionKey="ref_filecontent" >
+				</sender>
+				<forward name="success" path="READY"/>
+				<forward name="timeout" path="READY"/>
+				<forward name="illegalResult" path="READY"/>
+			</pipe>
+			
+		</pipeline>
+	</adapter>
+	<adapter name="ArchiveDocumentStreaming">
+
+		<receiver className="nl.nn.adapterframework.receivers.GenericReceiver"
+			name="ArchiveDocumentStreaming_Receiver" removeCompactMsgNamespaces="false">
+			<listener className="nl.nn.adapterframework.http.WebServiceListener"
+				name="ArchiveDocumentStreaming-WS" soap="false" mtomEnabled="true" />
+		</receiver>
+
+		<pipeline firstPipe="putTimeStampInSession">
+			<exits>
+				<exit path="EXIT" state="success" />
+			</exits>
+			<global-forwards>
+				<forward name="exception" path="throwException" />
+			</global-forwards>
+
+			<pipe name="putTimeStampInSession" className="nl.nn.adapterframework.pipes.PutSystemDateInSession"
+				sessionKey="timestampInSession" dateFormat="yyyyMMddHHmmssSSS"
+				sleepWhenEqualToPrevious="2">
+				<forward name="success" path="Call InfoImage" />
+			</pipe>
+
+			<pipe name="Call InfoImage"
+				className="nl.nn.adapterframework.pipes.GenericMessageSendingPipe"
+				storeResultInSessionKey="DocIDCreated">
+				<sender className="nl.nn.adapterframework.extensions.cmis.CmisSender"
+					url="${cmis.url}"
+					repository="${cmis.repository}" 
+					action="find"
+					bindingType="browser"
+					getProperties="true" 
+					userName="jeroen"
+					password="Welkom01" 
+					fileInputStreamSessionKey="attachment1"
+					useRootFolder="false" 
+					keepSession="${cmis.keepsession}">
+				</sender>
+
+				<!-- <messageLog className="nl.nn.adapterframework.jdbc.JdbcTransactionalStorage"
+					jmsRealm="jdbc" slotId="${instance.name}/InfoImage/ArchiveDocument" /> -->
+				<forward name="timeout" path="EXIT" />
+				<forward name="exception" path="EXIT" />
+				<forward name="illegalResult" path="EXIT" />
+
+				<forward name="success" path="EXIT" />
+			</pipe>
+
+			
+			
+		
+			
+		
+
+		</pipeline>
+	</adapter>
 </module>

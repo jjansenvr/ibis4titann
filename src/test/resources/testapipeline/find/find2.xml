@@ -1,0 +1,7 @@
+<query>
+<statement>SELECT * FROM cmis:document WHERE sg:documentName="sample document type-19.08.2017-DIODOESSDE_40003"</statement>
+<maxItems>10</maxItems>
+<skipCount>0</skipCount>
+<searchAllVersions>true</searchAllVersions>
+<includeAllowableActions>true</includeAllowableActions>
+</query>
